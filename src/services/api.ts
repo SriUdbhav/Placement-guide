@@ -374,19 +374,20 @@ export const apiClient = {
     progressPercent: number;
     quickReplies: string[];
     cvPatch: Partial<CVData>;
-  } | null> {
-    try {
-      const res = await fetch('/api/cvs/chat-step', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (e) {
-      console.warn('apiClient: sendCVChatStep failed', e);
-      return null;
+    modelUsed?: string;
+    isGeneralQuery?: boolean;
+  }> {
+    const res = await fetch('/api/cvs/chat-step', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      const msg = errJson.error || errJson.details || `Server responded with status ${res.status}`;
+      throw new Error(msg);
     }
+    return await res.json();
   },
 
   async generateFullResumeWithAI(payload: {

@@ -98,8 +98,13 @@ function PlaceMateApp() {
     e.preventDefault();
     setMandatoryError(null);
 
-    if (mandatoryNewPass.length < 6) {
-      setMandatoryError('New password must be at least 6 characters long.');
+    if (mandatoryNewPass.length < 8) {
+      setMandatoryError('New password must be at least 8 characters long.');
+      return;
+    }
+
+    if (!/[A-Z]/.test(mandatoryNewPass) || !/[a-z]/.test(mandatoryNewPass) || !/[0-9]/.test(mandatoryNewPass) || !/[!@#$%^&*(),.?":{}|<>_\-+=~/`[\]\\]/.test(mandatoryNewPass)) {
+      setMandatoryError('Password must include uppercase, lowercase, number, and special character (!@#$%^&*).');
       return;
     }
 

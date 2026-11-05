@@ -22,7 +22,19 @@ export interface IJobDrive extends Document {
   preferredSkills: string[];
   positionsCount: number;
   description: string;
-  status: 'Draft' | 'Scheduled' | 'Open' | 'Closed';
+  recruiterId?: string;
+  recruiterEmail?: string;
+  approvalRemarks?: string;
+  status:
+    | 'Draft'
+    | 'Pending Approval'
+    | 'Approved'
+    | 'Published'
+    | 'Open'
+    | 'Scheduled'
+    | 'Completed'
+    | 'Closed'
+    | 'Rejected';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,10 +74,23 @@ const JobDriveSchema: Schema = new Schema(
     preferredSkills: { type: [String], default: [] },
     positionsCount: { type: Number, default: 10 },
     description: { type: String, required: true },
+    recruiterId: { type: String },
+    recruiterEmail: { type: String },
+    approvalRemarks: { type: String },
     status: {
       type: String,
-      enum: ['Draft', 'Scheduled', 'Open', 'Closed'],
-      default: 'Open',
+      enum: [
+        'Draft',
+        'Pending Approval',
+        'Approved',
+        'Published',
+        'Open',
+        'Scheduled',
+        'Completed',
+        'Closed',
+        'Rejected',
+      ],
+      default: 'Published',
     },
   },
   {

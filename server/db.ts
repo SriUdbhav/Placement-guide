@@ -848,9 +848,8 @@ export const inMemoryStore = {
       department: 'Computer Science & Engineering',
       rollNo: '251FA04I28',
       passwordHash: bcrypt.hashSync('251FA04I28', 10), // Initial password is the registration number
-      mustChangePassword: false, // Prompted only once on first activation, not on every login
-      hasChangedInitialPassword: true,
-      lastLoginAt: new Date(),
+      mustChangePassword: true, // Requires first-time permanent password setup
+      hasChangedInitialPassword: false,
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),

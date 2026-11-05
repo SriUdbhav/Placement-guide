@@ -713,8 +713,17 @@ export const CVGenerator: React.FC<CVGeneratorProps> = ({ student, isRealAiActiv
         // Auto-save conversation state
         saveConversationToStorage(updatedCv, finalMessages, res.nextStepId, res.progressPercent);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Chat step error:', e);
+      const errorMessage: CVChatMessage = {
+        id: `msg-${Date.now()}-ai-err`,
+        sender: 'ai',
+        text: `⚠️ **Gemini AI Service Error**: ${e?.message || 'Unable to communicate with the Gemini AI service. Please check your network and try again.'}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        quickReplies: ['Try again', '🚀 Generate Resume'],
+        stepId: currentStepId,
+      };
+      setMessages([...updatedMessages, errorMessage]);
     } finally {
       setIsThinking(false);
       setTimeout(() => inputRef.current?.focus(), 100);

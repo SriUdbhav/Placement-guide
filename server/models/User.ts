@@ -15,6 +15,10 @@ export interface IUser extends Document {
   hasChangedInitialPassword: boolean;
   resetOtp?: string;
   resetOtpExpires?: Date;
+  otpAttempts?: number;
+  lastOtpSentAt?: Date;
+  failedLoginAttempts?: number;
+  lockUntil?: Date;
   resetToken?: string;
   resetTokenExpiry?: Date;
   lastLoginAt?: Date;
@@ -43,6 +47,10 @@ const UserSchema: Schema = new Schema(
     hasChangedInitialPassword: { type: Boolean, default: false },
     resetOtp: { type: String },
     resetOtpExpires: { type: Date },
+    otpAttempts: { type: Number, default: 0 },
+    lastOtpSentAt: { type: Date },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
     resetToken: { type: String },
     resetTokenExpiry: { type: Date },
     lastLoginAt: { type: Date },

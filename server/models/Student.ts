@@ -6,6 +6,7 @@ export interface IStudent extends Document {
   email: string;
   rollNo: string;
   department: string;
+  branch?: string;
   batch: string;
   graduationYear?: number;
   cgpa: number;
@@ -17,6 +18,21 @@ export interface IStudent extends Document {
   atsScore: number;
   tierCategory: 'Tier 1' | 'Tier 2' | 'Tier 3';
   skills: string[];
+  projects?: Array<{
+    title: string;
+    techStack?: string;
+    description?: string;
+  }>;
+  internships?: Array<{
+    company: string;
+    role: string;
+    duration?: string;
+  }>;
+  certifications?: Array<{
+    name: string;
+    issuer?: string;
+    year?: string;
+  }>;
   placed: boolean;
   offersReceived: number;
   maxCtcOfferedLpa?: number;
@@ -30,8 +46,9 @@ const StudentSchema: Schema = new Schema(
     studentId: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    rollNo: { type: String, required: true, unique: true },
-    department: { type: String, required: true },
+    rollNo: { type: String, required: true, unique: true, index: true },
+    department: { type: String, required: true, index: true },
+    branch: { type: String },
     batch: { type: String, required: true },
     graduationYear: { type: Number, default: 2025 },
     cgpa: { type: Number, required: true, min: 0, max: 10 },
@@ -47,6 +64,9 @@ const StudentSchema: Schema = new Schema(
       default: 'Tier 1',
     },
     skills: { type: [String], default: [] },
+    projects: { type: [Schema.Types.Mixed], default: [] },
+    internships: { type: [Schema.Types.Mixed], default: [] },
+    certifications: { type: [Schema.Types.Mixed], default: [] },
     placed: { type: Boolean, default: false },
     offersReceived: { type: Number, default: 0 },
     maxCtcOfferedLpa: { type: Number, default: 0 },

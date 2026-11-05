@@ -17,11 +17,12 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (role: UserRole, identifier: string, password: string) => Promise<{ success: boolean; error?: string; mustChangePassword?: boolean }>;
+  login: (role: UserRole, identifier: string, password: string) => Promise<{ success: boolean; error?: string; mustChangePassword?: boolean; user?: AuthUser }>;
   registerStudent: (data: any) => Promise<{ success: boolean; error?: string }>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>;
-  requestResetOtp: (rollNo: string) => Promise<{ success: boolean; error?: string; message?: string; maskedEmail?: string; otp?: string }>;
-  verifyResetOtp: (rollNo: string, otp: string, newPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  setupInitialPassword: (rollNo: string, currentPassword: string, newPassword: string, confirmPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  requestResetOtp: (identifier: string) => Promise<{ success: boolean; error?: string; message?: string; maskedEmail?: string; emailSent?: boolean; smtpConfigured?: boolean; devOtp?: string }>;
+  verifyResetOtp: (identifier: string, otp: string, newPassword: string, confirmPassword?: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   resetPassword: (role: UserRole, identifier: string, newPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   logout: () => void;
 }
@@ -44,21 +45,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(savedToken);
         setUser(parsedUser);
       } else {
-        // Default to demo student session on first load so users can immediately interact if not explicitly logged out
-        const defaultStudentUser: AuthUser = {
-          userId: 'usr-student-01',
-          name: 'Aarav Sharma',
-          email: 'aarav.sharma@campus.edu',
-          role: 'student',
-          department: 'Computer Science & Engineering',
-          rollNo: '21CS048',
-          studentId: 'stu-2025-089',
-          mustChangePassword: false,
-        };
-        setUser(defaultStudentUser);
+        // If not logged in, user is null so login portal is displayed
+        setUser(null);
       }
     } catch (e) {
       console.error('Failed to load session:', e);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -77,10 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: data.error || 'Authentication failed' };
       }
 
-      // Check if user has already been prompted once on this client
-      const promptKey = `placemate_pwd_prompted_${data.user?.rollNo || data.user?.userId || identifier.trim()}`;
-      const alreadyPrompted = localStorage.getItem(promptKey) === 'true';
-      const mustChangePassword = Boolean(data.mustChangePassword) && !alreadyPrompted;
+      const mustChangePassword = Boolean(data.mustChangePassword);
 
       const userToStore = {
         ...data.user,
@@ -94,7 +83,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true, mustChangePassword, user: userToStore };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Connection to authentication service failed' };
+      return { success: false, error: err.message || 'Unable to connect. Please try again.' };
+    }
+  };
+
+  const setupInitialPassword = async (
+    rollNo: string,
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string
+  ) => {
+    try {
+      const res = await fetch('/api/auth/setup-initial-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rollNo, currentPassword, newPassword, confirmPassword }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Password setup failed' };
+      }
+
+      if (data.token) {
+        setToken(data.token);
+        localStorage.setItem('placemate_auth_token', data.token);
+      }
+      if (data.user) {
+        const updated = { ...data.user, mustChangePassword: false };
+        setUser(updated);
+        localStorage.setItem('placemate_auth_user', JSON.stringify(updated));
+      }
+
+      return { success: true, message: data.message };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Unable to update password. Please try again.' };
     }
   };
 
@@ -115,11 +138,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: data.error || 'Password update failed' };
       }
 
-      const promptKey = user ? `placemate_pwd_prompted_${user.rollNo || user.userId}` : '';
-      if (promptKey) {
-        localStorage.setItem(promptKey, 'true');
-      }
-
       if (data.token) {
         setToken(data.token);
         localStorage.setItem('placemate_auth_token', data.token);
@@ -136,16 +154,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true, message: data.message };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Password update request failed' };
+      return { success: false, error: err.message || 'Unable to update password. Please try again.' };
     }
   };
 
-  const requestResetOtp = async (rollNo: string) => {
+  const requestResetOtp = async (identifier: string) => {
     try {
       const res = await fetch('/api/auth/forgot-password-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rollNo }),
+        body: JSON.stringify({ identifier }),
       });
 
       const data = await res.json();
@@ -157,19 +175,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         success: true,
         message: data.message,
         maskedEmail: data.maskedEmail,
-        otp: data.otp,
+        emailSent: data.emailSent,
+        smtpConfigured: data.smtpConfigured,
+        devOtp: data.devOtp,
       };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Connection to reset service failed' };
+      return { success: false, error: err.message || 'Unable to connect. Please try again.' };
     }
   };
 
-  const verifyResetOtp = async (rollNo: string, otp: string, newPassword: string) => {
+  const verifyResetOtp = async (
+    identifier: string,
+    otp: string,
+    newPassword: string,
+    confirmPassword?: string
+  ) => {
     try {
       const res = await fetch('/api/auth/verify-reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rollNo, otp, newPassword }),
+        body: JSON.stringify({ identifier, otp, newPassword, confirmPassword }),
       });
 
       const data = await res.json();
@@ -179,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true, message: data.message };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Password reset failed' };
+      return { success: false, error: err.message || 'Unable to complete password reset. Please try again.' };
     }
   };
 
@@ -203,7 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Student registration failed' };
+      return { success: false, error: err.message || 'Unable to connect. Please try again.' };
     }
   };
 
@@ -222,7 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true, message: data.message };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Password reset request failed' };
+      return { success: false, error: err.message || 'Unable to connect. Please try again.' };
     }
   };
 
@@ -242,6 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         changePassword,
+        setupInitialPassword,
         requestResetOtp,
         verifyResetOtp,
         registerStudent,
