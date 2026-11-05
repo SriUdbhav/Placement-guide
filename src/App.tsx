@@ -4,6 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginPortal } from './components/auth/LoginPortal';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { AICopilotDrawer } from './components/copilot/AICopilotDrawer';
@@ -18,35 +21,136 @@ import { PlacementOfficerDashboard } from './components/tpo/PlacementOfficerDash
 import { RecruiterDashboard } from './components/recruiter/RecruiterDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { GlobalSearchModal } from './components/common/GlobalSearchModal';
+import { PlacementNotificationLogsModal } from './components/common/PlacementNotificationLogsModal';
 
-import { UserRole, NavigationTab, JobDrive, ApplicationRecord, ApplicationStatus } from './types';
+import { NavigationTab, JobDrive, ApplicationRecord, ApplicationStatus } from './types';
 import { CURRENT_STUDENT, MOCK_JOB_DRIVES, MOCK_APPLICATIONS } from './data/mockData';
+import { apiClient, DatabaseStatusResponse } from './services/api';
+import { ShieldAlert, AlertCircle } from 'lucide-react';
 
-export default function App() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('student');
+function PlaceMateApp() {
+  const { user, isAuthenticated, isLoading, changePassword } = useAuth();
+
   const [currentTab, setCurrentTab] = useState<NavigationTab>('student-dashboard');
-
   const [student, setStudent] = useState(CURRENT_STUDENT);
   const [drives, setDrives] = useState<JobDrive[]>(MOCK_JOB_DRIVES);
   const [applications, setApplications] = useState<ApplicationRecord[]>(MOCK_APPLICATIONS);
+  const [dbStatus, setDbStatus] = useState<DatabaseStatusResponse | null>(null);
 
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isEmailLogsOpen, setIsEmailLogsOpen] = useState(false);
   const [isRealAiActive, setIsRealAiActive] = useState(false);
 
-  // Check server status on mount
+  // Mandatory password change modal state if user session has mustChangePassword === true
+  const [mandatoryCurrentPass, setMandatoryCurrentPass] = useState('');
+  const [mandatoryNewPass, setMandatoryNewPass] = useState('');
+  const [mandatoryConfirmPass, setMandatoryConfirmPass] = useState('');
+  const [mandatoryError, setMandatoryError] = useState<string | null>(null);
+  const [mandatorySubmitting, setMandatorySubmitting] = useState(false);
+
+  // Safe navigation handler enforcing role isolation
+  const handleTabChange = (tab: NavigationTab) => {
+    if (user?.role === 'student') {
+      const allowedStudentTabs: NavigationTab[] = [
+        'student-dashboard',
+        'job-recommendations',
+        'application-tracker',
+        'eligibility-checker',
+        'resume-analyzer',
+        'skill-gap',
+        'mock-interview',
+      ];
+      if (!allowedStudentTabs.includes(tab)) {
+        console.warn('Access denied: Student account is restricted from administrative portals.');
+        setCurrentTab('student-dashboard');
+        return;
+      }
+    }
+    setCurrentTab(tab);
+  };
+
+  const handleMandatorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMandatoryError(null);
+
+    if (mandatoryNewPass.length < 6) {
+      setMandatoryError('New password must be at least 6 characters long.');
+      return;
+    }
+
+    if (user?.rollNo && mandatoryNewPass.trim().toUpperCase() === user.rollNo.toUpperCase()) {
+      setMandatoryError('University Security Policy: Registration Number cannot be reused as your personal password.');
+      return;
+    }
+
+    if (mandatoryNewPass !== mandatoryConfirmPass) {
+      setMandatoryError('New password and confirmation password do not match.');
+      return;
+    }
+
+    setMandatorySubmitting(true);
+    try {
+      const res = await changePassword(mandatoryCurrentPass, mandatoryNewPass);
+      if (!res.success) {
+        setMandatoryError(res.error || 'Failed to update password');
+      } else {
+        setMandatoryError(null);
+      }
+    } finally {
+      setMandatorySubmitting(false);
+    }
+  };
+
+  // Sync tab with user's role on login
   useEffect(() => {
+    if (user) {
+      if (user.role === 'tpo') setCurrentTab('tpo-dashboard');
+      else if (user.role === 'recruiter') setCurrentTab('recruiter-dashboard');
+      else if (user.role === 'admin') setCurrentTab('admin-dashboard');
+      else setCurrentTab('student-dashboard');
+    }
+  }, [user]);
+
+  // Load initial data from MongoDB Atlas REST APIs on mount
+  useEffect(() => {
+    // 1. Check system & Gemini AI status
     fetch('/api/status')
       .then((res) => res.json())
       .then((data) => {
         if (data.hasGeminiKey) {
           setIsRealAiActive(true);
         }
+        if (data.database) {
+          setDbStatus(data.database);
+        }
       })
       .catch((err) => {
         console.log('Running client in local mode:', err);
       });
-  }, []);
+
+    // 2. Fetch student profile from database matching logged in student
+    const targetStudentId = user?.rollNo || user?.studentId || 'stu-2025-089';
+    apiClient.getStudent(targetStudentId).then((stu) => {
+      if (stu) {
+        setStudent(stu);
+      }
+    });
+
+    // 3. Fetch placement drives from database
+    apiClient.getJobs().then((jobList) => {
+      if (jobList && jobList.length > 0) {
+        setDrives(jobList);
+      }
+    });
+
+    // 4. Fetch applications from database
+    apiClient.getApplications(user?.studentId || targetStudentId).then((apps) => {
+      if (apps && apps.length > 0) {
+        setApplications(apps);
+      }
+    });
+  }, [user]);
 
   // Global keyboard shortcuts (Cmd+K for search, Cmd+J for AI copilot)
   useEffect(() => {
@@ -64,78 +168,105 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleApplyDrive = (driveId: string) => {
+  const handleApplyDrive = async (driveId: string) => {
     const drive = drives.find((d) => d.id === driveId);
     if (!drive) return;
 
-    // Update drive status
     setDrives((prev) =>
       prev.map((d) => (d.id === driveId ? { ...d, isApplied: true, applicationStatus: 'Applied' } : d))
     );
 
-    // Add to applications if not already present
-    if (!applications.some((a) => a.jobId === driveId)) {
-      const newApp: ApplicationRecord = {
-        id: `app-${Date.now()}`,
-        jobId: drive.id,
-        companyName: drive.companyName,
-        role: drive.role,
-        ctcPackageLpa: drive.ctcPackageLpa,
-        appliedDate: new Date().toISOString().split('T')[0],
-        status: 'Applied',
-        nextRound: 'Campus Profile Screening',
-        aiReadinessScore: drive.matchScore,
-        feedbackNotes: 'Application submitted via PlaceMate AI portal.',
-      };
-      setApplications((prev) => [newApp, ...prev]);
+    const submitted = await apiClient.submitApplication({
+      studentId: student.id || 'stu-2025-089',
+      studentName: student.name,
+      jobId: drive.id,
+      companyName: drive.companyName,
+      role: drive.role,
+      ctcPackageLpa: drive.ctcPackageLpa,
+      aiReadinessScore: drive.matchScore,
+    });
+
+    if (submitted) {
+      setApplications((prev) => {
+        if (prev.some((a) => a.jobId === driveId)) return prev;
+        return [submitted, ...prev];
+      });
+    } else {
+      if (!applications.some((a) => a.jobId === driveId)) {
+        const newApp: ApplicationRecord = {
+          id: `app-${Date.now()}`,
+          jobId: drive.id,
+          companyName: drive.companyName,
+          role: drive.role,
+          ctcPackageLpa: drive.ctcPackageLpa,
+          appliedDate: new Date().toISOString().split('T')[0],
+          status: 'Applied',
+          nextRound: 'Campus Profile Screening',
+          aiReadinessScore: drive.matchScore,
+          feedbackNotes: 'Application registered in placement database.',
+        };
+        setApplications((prev) => [newApp, ...prev]);
+      }
     }
   };
 
-  const handleUpdateStatus = (appId: string, newStatus: ApplicationStatus) => {
+  const handleUpdateStatus = async (appId: string, newStatus: ApplicationStatus) => {
     setApplications((prev) =>
       prev.map((app) => (app.id === appId ? { ...app, status: newStatus } : app))
     );
+    await apiClient.updateApplicationStatus(appId, newStatus);
   };
 
   const handleOpenCopilotWithPrompt = (prompt: string) => {
     setIsCopilotOpen(true);
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-app)] text-[var(--text-main)]">
+        <div className="text-xs font-semibold animate-pulse">Initializing PlaceMate AI Portal...</div>
+      </div>
+    );
+  }
+
+  // If not logged in, display the Role-Based Login Portal
+  if (!isAuthenticated || !user) {
+    return <LoginPortal onSuccess={() => {}} />;
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-row font-sans text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900">
-      {/* 260px Fixed Sidebar Application Rail */}
+    <div className="min-h-screen bg-[var(--bg-app)] flex flex-row font-sans text-[var(--text-main)] antialiased selection:bg-indigo-100 selection:text-indigo-900 transition-colors">
+      {/* 256px Fixed Sidebar Navigation Rail */}
       <Sidebar
-        currentRole={currentRole}
-        setCurrentRole={setCurrentRole}
         currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
+        setCurrentTab={handleTabChange}
         student={student}
         isRealAiActive={isRealAiActive}
         toggleAiMode={() => setIsRealAiActive((prev) => !prev)}
+        onOpenNotificationsModal={() => setIsEmailLogsOpen(true)}
       />
 
       {/* Main Fluid Work Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {/* Sticky Top Header */}
+        {/* Sticky Top Header with Theme Switcher, Search & Account */}
         <Header
-          currentRole={currentRole}
-          setCurrentRole={setCurrentRole}
           currentTab={currentTab}
-          setCurrentTab={setCurrentTab}
+          setCurrentTab={handleTabChange}
           isCopilotOpen={isCopilotOpen}
           setIsCopilotOpen={setIsCopilotOpen}
           onSearchClick={() => setIsSearchOpen(true)}
           isRealAiActive={isRealAiActive}
+          onOpenNotificationsModal={() => setIsEmailLogsOpen(true)}
         />
 
         {/* View Content Canvas */}
-        <main className="flex-1 p-6 md:p-8 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-5 md:p-8 max-w-[1500px] w-full mx-auto">
           {currentTab === 'student-dashboard' && (
             <StudentDashboard
               student={student}
               drives={drives}
               applications={applications}
-              onNavigate={(tab) => setCurrentTab(tab)}
+              onNavigate={(tab) => handleTabChange(tab)}
               onOpenCopilotWithPrompt={handleOpenCopilotWithPrompt}
               onApplyDrive={handleApplyDrive}
             />
@@ -199,6 +330,7 @@ export default function App() {
             <AdminDashboard
               isRealAiActive={isRealAiActive}
               toggleAiMode={() => setIsRealAiActive((prev) => !prev)}
+              dbStatus={dbStatus}
             />
           )}
         </main>
@@ -218,22 +350,108 @@ export default function App() {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         drives={drives}
-        onSelectTab={(tab) => {
-          setCurrentTab(tab);
-          if (
-            ['tpo-dashboard', 'recruiter-dashboard', 'admin-dashboard'].includes(tab)
-          ) {
-            if (tab === 'tpo-dashboard') setCurrentRole('tpo');
-            if (tab === 'recruiter-dashboard') setCurrentRole('recruiter');
-            if (tab === 'admin-dashboard') setCurrentRole('admin');
-          } else {
-            setCurrentRole('student');
-          }
-        }}
-        onSelectDrive={(driveId) => {
-          setCurrentTab('job-recommendations');
-        }}
+        onSelectTab={(tab) => handleTabChange(tab)}
+        onSelectDrive={(_driveId) => handleTabChange('job-recommendations')}
       />
+
+      {/* Placement Email Notifications & Delivery Logs Modal */}
+      <PlacementNotificationLogsModal
+        isOpen={isEmailLogsOpen}
+        onClose={() => setIsEmailLogsOpen(false)}
+      />
+
+      {/* Mandatory Password Change Blocking Modal for Active First-Time Students */}
+      {user?.role === 'student' && user?.mustChangePassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-2xl">
+            <div className="flex items-center space-x-3 pb-3 border-b border-[var(--border-subtle)] mb-4">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-main)]">Action Required: Update Initial Password</h3>
+                <p className="text-[11px] text-[var(--text-muted)]">University Placement Security Policy</p>
+              </div>
+            </div>
+
+            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-[var(--text-secondary)] leading-relaxed">
+              <p>
+                Welcome <strong>{user.name}</strong> ({user.rollNo}). You are currently logged in with your initial university registration password.
+              </p>
+              <p className="mt-1 font-medium">
+                Please set a personal password to activate and unlock your placement portal.
+              </p>
+            </div>
+
+            {mandatoryError && (
+              <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                <span>{mandatoryError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleMandatorySubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold mb-1 text-[var(--text-main)]">Current Password</label>
+                <input
+                  type="password"
+                  value={mandatoryCurrentPass}
+                  onChange={(e) => setMandatoryCurrentPass(e.target.value)}
+                  placeholder="Enter initial registration password"
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] text-[var(--text-main)]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                  New Personal Password <span className="text-[var(--text-muted)] font-normal">(min 6 characters)</span>
+                </label>
+                <input
+                  type="password"
+                  value={mandatoryNewPass}
+                  onChange={(e) => setMandatoryNewPass(e.target.value)}
+                  placeholder="Create personal password"
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] text-[var(--text-main)]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-[var(--text-main)]">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={mandatoryConfirmPass}
+                  onChange={(e) => setMandatoryConfirmPass(e.target.value)}
+                  placeholder="Re-enter new password"
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] text-[var(--text-main)]"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={mandatorySubmitting}
+                  className="w-full py-2.5 px-4 rounded-lg bg-[var(--accent-brand)] hover:bg-[var(--accent-brand-hover)] text-white font-semibold cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  {mandatorySubmitting ? 'Updating Credentials...' : 'Save New Password & Unlock Portal'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <PlaceMateApp />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

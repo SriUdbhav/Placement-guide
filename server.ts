@@ -5,7 +5,18 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 
-dotenv.config();
+import { connectDatabase, getDatabaseStatus } from './server/db';
+import { studentRouter } from './server/routes/students';
+import { companyRouter } from './server/routes/companies';
+import { jobRouter } from './server/routes/jobs';
+import { applicationRouter } from './server/routes/applications';
+import { interviewRouter } from './server/routes/interviews';
+import { notificationRouter } from './server/routes/notifications';
+import { resumeRouter } from './server/routes/resumes';
+import { authRouter } from './server/routes/auth';
+import { emailRouter } from './server/routes/email';
+
+dotenv.config({ override: true });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +26,11 @@ async function startServer() {
   const PORT = parseInt(process.env.PORT || '3000', 10);
 
   app.use(express.json({ limit: '10mb' }));
+
+  // Connect to Database (MongoDB Atlas with graceful local fallback)
+  connectDatabase().catch((err) => {
+    console.log('PlaceMate DB: Startup connection handler note:', err?.message || err);
+  });
 
   // Check if GEMINI_API_KEY is configured
   const apiKey = process.env.GEMINI_API_KEY;
@@ -37,18 +53,52 @@ async function startServer() {
     }
   }
 
-  // Status check endpoint
-  app.get('/api/status', (_req: Request, res: Response) => {
+  // General System Status check endpoint
+  app.get('/api/status', async (_req: Request, res: Response) => {
+    const dbStatus = await getDatabaseStatus();
     res.json({
       status: 'active',
       hasGeminiKey: Boolean(genAI),
       model: 'gemini-3.8-flash',
       engine: genAI ? 'real_gemini' : 'simulation_demo',
+      database: dbStatus,
       message: genAI
         ? 'Connected to Gemini 3.8 Flash live placement model'
         : 'Running in high-fidelity Demo Intelligence Mode (Gemini key not configured or demo requested)',
     });
   });
+
+  // Database Health & Collection Counts endpoint
+  app.get('/api/db/status', async (_req: Request, res: Response) => {
+    try {
+      const status = await getDatabaseStatus();
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to retrieve database status', details: err.message });
+    }
+  });
+
+  // Manual Atlas Reconnect Trigger
+  app.post('/api/db/reconnect', async (_req: Request, res: Response) => {
+    try {
+      await connectDatabase();
+      const status = await getDatabaseStatus();
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Reconnect attempt failed', details: err.message });
+    }
+  });
+
+  // Mount REST API Routers
+  app.use('/api/auth', authRouter);
+  app.use('/api/students', studentRouter);
+  app.use('/api/companies', companyRouter);
+  app.use('/api/jobs', jobRouter);
+  app.use('/api/applications', applicationRouter);
+  app.use('/api/interviews', interviewRouter);
+  app.use('/api/notifications', notificationRouter);
+  app.use('/api/resumes', resumeRouter);
+  app.use('/api/email', emailRouter);
 
   // AI Placement Copilot Endpoint
   app.post('/api/ai/copilot', async (req: Request, res: Response) => {

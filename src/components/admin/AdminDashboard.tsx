@@ -10,17 +10,37 @@ import {
   Activity,
   History,
   FileCheck,
+  RefreshCw,
 } from 'lucide-react';
+
+import { DatabaseStatusResponse, apiClient } from '../../services/api';
 
 interface AdminDashboardProps {
   isRealAiActive: boolean;
   toggleAiMode: () => void;
+  dbStatus?: DatabaseStatusResponse | null;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   isRealAiActive,
   toggleAiMode,
+  dbStatus,
 }) => {
+  const [localDbStatus, setLocalDbStatus] = useState<DatabaseStatusResponse | null | undefined>(dbStatus);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+
+  React.useEffect(() => {
+    setLocalDbStatus(dbStatus);
+  }, [dbStatus]);
+
+  const handleTestConnection = async () => {
+    setIsReconnecting(true);
+    const updated = await apiClient.reconnectDatabase();
+    if (updated) {
+      setLocalDbStatus(updated);
+    }
+    setIsReconnecting(false);
+  };
   const [dreamLockThresholdLpa, setDreamLockThresholdLpa] = useState(18.0);
   const [maxActiveApplications, setMaxActiveApplications] = useState(10);
   const [minAttendancePercent, setMinAttendancePercent] = useState(75);
@@ -223,14 +243,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </p>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-              <div className="flex justify-between font-bold text-slate-800">
-                <span>Campus Database (Mock State)</span>
-                <span className="text-indigo-600">In-Memory</span>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5">
+              <div className="flex justify-between items-center font-bold text-slate-800">
+                <span>Database Engine</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${localDbStatus?.isConnected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
+                  {localDbStatus?.isConnected ? 'MongoDB Atlas (Connected)' : 'Local Persistent Store (Active)'}
+                </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                No external DB connected as per hackathon specification.
+                {localDbStatus?.isConnected
+                  ? `Connected to database: ${localDbStatus.databaseName} on ${localDbStatus.sanitizedHost || 'Atlas'}. Mongoose ODM active.`
+                  : localDbStatus?.hasEnvUri
+                  ? `Atlas connection deferred for ${localDbStatus.sanitizedHost || 'cluster'}. Operating via Mongoose fallback.`
+                  : 'Operating via Mongoose REST API layer with local persistent memory store.'}
               </p>
+              {localDbStatus?.lastErrorMessage && !localDbStatus.isConnected && (
+                <div className="p-2 bg-rose-50 rounded-lg border border-rose-200/70 text-[10px] text-rose-800 font-mono break-all leading-tight">
+                  {localDbStatus.lastErrorMessage}
+                </div>
+              )}
+              {localDbStatus?.ipWhitelistHint && (
+                <div className="p-2 bg-amber-50 rounded-lg border border-amber-200/70 text-[10px] text-amber-800 leading-tight">
+                  <strong>Atlas Setup Tip:</strong> To connect MongoDB Atlas from cloud runners, add <code className="bg-white px-1 py-0.2 rounded font-mono">0.0.0.0/0</code> under <em>Atlas → Network Access → IP Access List</em>.
+                </div>
+              )}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={isReconnecting}
+                  className="w-full py-1.5 px-3 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isReconnecting ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
+                  <span>{isReconnecting ? 'Testing Atlas Connection...' : 'Test Atlas Connection'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
