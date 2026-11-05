@@ -15,6 +15,7 @@ import { notificationRouter } from './server/routes/notifications';
 import { resumeRouter } from './server/routes/resumes';
 import { authRouter } from './server/routes/auth';
 import { emailRouter } from './server/routes/email';
+import { cvRouter } from './server/routes/cvs';
 
 dotenv.config({ override: true });
 
@@ -63,8 +64,8 @@ async function startServer() {
       engine: genAI ? 'real_gemini' : 'simulation_demo',
       database: dbStatus,
       message: genAI
-        ? 'Connected to Gemini 3.8 Flash live placement model'
-        : 'Running in high-fidelity Demo Intelligence Mode (Gemini key not configured or demo requested)',
+        ? 'Connected to Live AI Placement Engine'
+        : 'Running in high-fidelity Demo Intelligence Mode (AI key not configured or demo requested)',
     });
   });
 
@@ -98,6 +99,7 @@ async function startServer() {
   app.use('/api/interviews', interviewRouter);
   app.use('/api/notifications', notificationRouter);
   app.use('/api/resumes', resumeRouter);
+  app.use('/api/cvs', cvRouter);
   app.use('/api/email', emailRouter);
 
   // AI Placement Copilot Endpoint
@@ -111,22 +113,21 @@ async function startServer() {
     // If real Gemini is requested and available
     if (mode !== 'demo' && genAI) {
       try {
-        const systemPrompt = `You are PlaceMate Copilot, an expert AI Placement and Recruitment Management Agent for university campuses (Hackathon Problem Statement 16).
-You assist students, placement officers, and recruiters with:
-1. Campus placement readiness, ATS score improvement, and skill alignment
-2. Company drive requirements (Google, Microsoft, Amazon, Oracle, Goldman Sachs, etc.)
-3. Eligibility criteria (CGPA cutoffs, backlog policies, tier categorization)
-4. Mock interview prep, technical coding strategies, and behavioural response formulations (STAR method)
-5. Resume optimization recommendations.
+        const systemPrompt = `You are PlaceMate Copilot, an expert AI Placement and Recruitment Management Agent for Vignan's Foundation for Science, Technology & Research (VFSTR) aligned with Hackathon 2.0 Problem Statement 16.
+You assist VFSTR students, Career Development Centre (CDC) officers, and recruiting partners with:
+1. VFSTR Placement Bylaws & Tier Upgrades: Explaining the institutional one-student-one-job policy, Dream (6-12 LPA) and Super Dream (12-18+ LPA) upgrade eligibility, and zero-backlog policies.
+2. Campus Placement Readiness: Tailored DSA strategies, system architecture, and STAR-method behavioral preparation for VFSTR visiting recruiters (Amazon, Google, Microsoft, Darwinbox, Cisco, TCS Digital, Cognizant GenC Next).
+3. Eligibility Audits: Evaluating student CGPA cutoffs, 10th/12th percentages, and department criteria across VFSTR engineering branches (CSE, IT, AI & ML, ECE, EEE, ME, BT).
+4. ATS Resume Optimization: Action-verb density, quantifiable latency/scale achievements, and keyword alignment.
+5. Personalized Remedial Learning Paths for identified skill gaps.
 
 Current Student Profile in view:
-- Name: Aarav Sharma (B.Tech CSE, 2025 batch)
-- CGPA: 8.92 / 10.0 (No active backlogs)
-- Key Skills: React, Node.js, TypeScript, Python, PyTorch, PostgreSQL, Docker, Git, DSA (LeetCode 450+)
-- Active Applications: 8 (Google SDE-I, Microsoft Cloud, Amazon SDE, Oracle Cloud, Goldman Sachs Analyst)
+- Name: ${context?.studentName || 'Sri Udbhav / Aarav Sharma'} (B.Tech CSE, VFSTR 2025 Batch)
+- CGPA: ${context?.cgpa || '9.24'} / 10.0 (Clean record, 0 active backlogs)
+- Key Skills: React, Node.js, TypeScript, Python, PostgreSQL, Docker, Git, Distributed Systems, DSA (LeetCode 450+)
 - Target Role: Software Development Engineer (Full-Stack / Distributed Systems)
 
-Answer concisely, authoritatively, and professionally. Use markdown bullets and bold highlights where appropriate. If asked for recommendations, provide concrete actionable next steps.`;
+Answer concisely, authoritatively, and professionally. Use markdown bullets and bold highlights. Provide concrete actionable next steps.`;
 
         const response = await genAI.models.generateContent({
           model: 'gemini-3.8-flash',
@@ -236,6 +237,22 @@ Provide an ATS score out of 100, strong points, missing keywords, and 3 specific
       ],
       source: 'demo_intelligence',
     });
+  });
+
+  // Database offline & error handling middleware
+  app.use((err: any, req: Request, res: Response, next: any) => {
+    if (
+      err?.name === 'MongooseError' ||
+      err?.name === 'MongoNetworkError' ||
+      (err?.message && (err.message.includes('buffering timed out') || err.message.includes('ECONNREFUSED')))
+    ) {
+      console.warn('[AI Studio] Database offline — returning fallback response for:', req.path);
+      if (req.method === 'GET') {
+        return res.json(req.path.endsWith('s') || req.path.endsWith('s/') ? [] : {});
+      }
+      return res.status(503).json({ error: 'Service temporarily unavailable (database offline)' });
+    }
+    next(err);
   });
 
   // Vite development middleware vs production static files

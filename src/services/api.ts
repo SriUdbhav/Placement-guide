@@ -1,4 +1,4 @@
-import { JobDrive, ApplicationRecord, StudentProfile, ApplicationStatus } from '../types';
+import { JobDrive, ApplicationRecord, StudentProfile, ApplicationStatus, CVData } from '../types';
 
 export interface DatabaseStatusResponse {
   isConnected: boolean;
@@ -254,6 +254,239 @@ export const apiClient = {
       await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
     } catch (e) {
       // ignore
+    }
+  },
+
+  // CV Generator
+  async getCVs(studentId?: string): Promise<CVData[]> {
+    try {
+      const url = studentId ? `/api/cvs?studentId=${encodeURIComponent(studentId)}` : '/api/cvs';
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.map((d: any) => ({
+        ...d,
+        id: d.cvId || d._id || d.id,
+      }));
+    } catch (e) {
+      console.warn('apiClient: failed to fetch CVs', e);
+      return [];
+    }
+  },
+
+  async getCV(id: string): Promise<CVData | null> {
+    try {
+      const res = await fetch(`/api/cvs/${id}`);
+      if (!res.ok) return null;
+      const d = await res.json();
+      return {
+        ...d,
+        id: d.cvId || d._id || d.id,
+      };
+    } catch (e) {
+      console.warn('apiClient: failed to fetch CV', e);
+      return null;
+    }
+  },
+
+  async createCV(cvData: Partial<CVData>): Promise<CVData | null> {
+    try {
+      const res = await fetch('/api/cvs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cvData),
+      });
+      if (!res.ok) return null;
+      const d = await res.json();
+      return {
+        ...d,
+        id: d.cvId || d._id || d.id,
+      };
+    } catch (e) {
+      console.warn('apiClient: failed to create CV', e);
+      return null;
+    }
+  },
+
+  async updateCV(id: string, updates: Partial<CVData>): Promise<CVData | null> {
+    try {
+      const res = await fetch(`/api/cvs/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) return null;
+      const d = await res.json();
+      return {
+        ...d,
+        id: d.cvId || d._id || d.id,
+      };
+    } catch (e) {
+      console.warn('apiClient: failed to update CV', e);
+      return null;
+    }
+  },
+
+  async deleteCV(id: string): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/cvs/${id}`, { method: 'DELETE' });
+      return res.ok;
+    } catch (e) {
+      console.warn('apiClient: failed to delete CV', e);
+      return false;
+    }
+  },
+
+  async enhanceCVSection(params: {
+    sectionType: 'objective' | 'summary' | 'project' | 'experience';
+    draftText: string;
+    targetRole?: string;
+    studentContext?: any;
+  }): Promise<string> {
+    try {
+      const res = await fetch('/api/cvs/ai-enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) throw new Error('Enhancement request failed');
+      const data = await res.json();
+      return data.enhancedText || '';
+    } catch (e) {
+      console.warn('apiClient: AI enhance error', e);
+      return '';
+    }
+  },
+
+  async sendCVChatStep(payload: {
+    message: string;
+    stepId: string;
+    conversationHistory?: any[];
+    currentCv?: Partial<CVData>;
+    studentProfile?: any;
+    targetRole?: string;
+    targetCompany?: string;
+    jobDescription?: string;
+  }): Promise<{
+    success?: boolean;
+    aiResponse: string;
+    nextStepId: string;
+    progressPercent: number;
+    quickReplies: string[];
+    cvPatch: Partial<CVData>;
+  } | null> {
+    try {
+      const res = await fetch('/api/cvs/chat-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      console.warn('apiClient: sendCVChatStep failed', e);
+      return null;
+    }
+  },
+
+  async generateFullResumeWithAI(payload: {
+    cvData: Partial<CVData>;
+    targetRole?: string;
+    studentProfile?: any;
+  }): Promise<Partial<CVData> | null> {
+    try {
+      const res = await fetch('/api/cvs/generate-full-resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.optimizedCv || null;
+    } catch (e) {
+      console.warn('apiClient: generateFullResumeWithAI failed', e);
+      return null;
+    }
+  },
+
+  async regenerateCVSection(payload: {
+    section: 'summary' | 'projects' | 'experience' | 'skills';
+    cvData: Partial<CVData>;
+    targetRole?: string;
+    studentProfile?: any;
+  }): Promise<any | null> {
+    try {
+      const res = await fetch('/api/cvs/regenerate-section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.updatedSection || null;
+    } catch (e) {
+      console.warn('apiClient: regenerateCVSection failed', e);
+      return null;
+    }
+  },
+
+  async streamResumeGeneration(
+    payload: {
+      studentProfile?: any;
+      targetRole?: string;
+      targetCompany?: string;
+      jobDescription?: string;
+      cvData?: Partial<CVData>;
+    },
+    onChunk: (chunkText: string) => void,
+    onComplete: () => void,
+    onError: (err: any) => void
+  ): Promise<void> {
+    try {
+      const response = await fetch('/api/cvs/stream-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Streaming connection failed');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data:')) {
+            try {
+              const data = JSON.parse(trimmed.replace(/^data:\s*/, ''));
+              if (data.text) {
+                onChunk(data.text);
+              }
+              if (data.done) {
+                onComplete();
+                return;
+              }
+            } catch (err) {
+              // Ignore malformed SSE chunk
+            }
+          }
+        }
+      }
+
+      onComplete();
+    } catch (err) {
+      onError(err);
     }
   },
 };

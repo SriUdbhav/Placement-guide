@@ -12,6 +12,7 @@ import { Header } from './components/layout/Header';
 import { AICopilotDrawer } from './components/copilot/AICopilotDrawer';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { ResumeAnalyzer } from './components/student/ResumeAnalyzer';
+import { CVGenerator } from './components/student/CVGenerator';
 import { JobRecommendations } from './components/student/JobRecommendations';
 import { EligibilityChecker } from './components/student/EligibilityChecker';
 import { SkillGapAnalysis } from './components/student/SkillGapAnalysis';
@@ -42,12 +43,34 @@ function PlaceMateApp() {
   const [isEmailLogsOpen, setIsEmailLogsOpen] = useState(false);
   const [isRealAiActive, setIsRealAiActive] = useState(false);
 
-  // Mandatory password change modal state if user session has mustChangePassword === true
+  // Mandatory password change modal state - prompts only once per user
   const [mandatoryCurrentPass, setMandatoryCurrentPass] = useState('');
   const [mandatoryNewPass, setMandatoryNewPass] = useState('');
   const [mandatoryConfirmPass, setMandatoryConfirmPass] = useState('');
   const [mandatoryError, setMandatoryError] = useState<string | null>(null);
   const [mandatorySubmitting, setMandatorySubmitting] = useState(false);
+  const [hasDismissedMandatory, setHasDismissedMandatory] = useState(() => {
+    if (!user) return false;
+    const promptKey = `placemate_pwd_prompted_${user.rollNo || user.userId}`;
+    return localStorage.getItem(promptKey) === 'true';
+  });
+
+  useEffect(() => {
+    if (user) {
+      const promptKey = `placemate_pwd_prompted_${user.rollNo || user.userId}`;
+      if (localStorage.getItem(promptKey) === 'true') {
+        setHasDismissedMandatory(true);
+      }
+    }
+  }, [user]);
+
+  const handleDismissMandatory = () => {
+    if (user) {
+      const promptKey = `placemate_pwd_prompted_${user.rollNo || user.userId}`;
+      localStorage.setItem(promptKey, 'true');
+    }
+    setHasDismissedMandatory(true);
+  };
 
   // Safe navigation handler enforcing role isolation
   const handleTabChange = (tab: NavigationTab) => {
@@ -58,6 +81,7 @@ function PlaceMateApp() {
         'application-tracker',
         'eligibility-checker',
         'resume-analyzer',
+        'cv-generator',
         'skill-gap',
         'mock-interview',
       ];
@@ -96,6 +120,7 @@ function PlaceMateApp() {
         setMandatoryError(res.error || 'Failed to update password');
       } else {
         setMandatoryError(null);
+        handleDismissMandatory();
       }
     } finally {
       setMandatorySubmitting(false);
@@ -280,6 +305,13 @@ function PlaceMateApp() {
             />
           )}
 
+          {currentTab === 'cv-generator' && (
+            <CVGenerator
+              student={student}
+              isRealAiActive={isRealAiActive}
+            />
+          )}
+
           {currentTab === 'job-recommendations' && (
             <JobRecommendations
               drives={drives}
@@ -324,7 +356,14 @@ function PlaceMateApp() {
 
           {currentTab === 'tpo-dashboard' && <PlacementOfficerDashboard />}
 
-          {currentTab === 'recruiter-dashboard' && <RecruiterDashboard />}
+          {currentTab === 'recruiter-dashboard' && (
+            <RecruiterDashboard
+              drives={drives}
+              onPublishDrive={(newDrive) => setDrives((prev) => [newDrive, ...prev])}
+              applications={applications}
+              onUpdateStatus={handleUpdateStatus}
+            />
+          )}
 
           {currentTab === 'admin-dashboard' && (
             <AdminDashboard
@@ -360,18 +399,28 @@ function PlaceMateApp() {
         onClose={() => setIsEmailLogsOpen(false)}
       />
 
-      {/* Mandatory Password Change Blocking Modal for Active First-Time Students */}
-      {user?.role === 'student' && user?.mustChangePassword && (
+      {/* Mandatory Password Change Blocking Modal for Active First-Time Students (Prompts only once) */}
+      {user?.role === 'student' && user?.mustChangePassword && !hasDismissedMandatory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-2xl">
-            <div className="flex items-center space-x-3 pb-3 border-b border-[var(--border-subtle)] mb-4">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
-                <ShieldAlert className="w-5 h-5" />
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)] mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--text-main)]">Action Required: Update Initial Password</h3>
+                  <p className="text-[11px] text-[var(--text-muted)]">University Placement Security Policy</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-[var(--text-main)]">Action Required: Update Initial Password</h3>
-                <p className="text-[11px] text-[var(--text-muted)]">University Placement Security Policy</p>
-              </div>
+              <button
+                type="button"
+                onClick={handleDismissMandatory}
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 rounded-lg hover:bg-[var(--bg-subtle)] cursor-pointer"
+                title="Dismiss"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -429,13 +478,20 @@ function PlaceMateApp() {
                 />
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 flex items-center justify-between space-x-2">
+                <button
+                  type="button"
+                  onClick={handleDismissMandatory}
+                  className="px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] hover:underline cursor-pointer"
+                >
+                  Remind me later
+                </button>
                 <button
                   type="submit"
                   disabled={mandatorySubmitting}
-                  className="w-full py-2.5 px-4 rounded-lg bg-[var(--accent-brand)] hover:bg-[var(--accent-brand-hover)] text-white font-semibold cursor-pointer shadow-xs disabled:opacity-50"
+                  className="py-2 px-4 rounded-lg bg-[var(--accent-brand)] hover:bg-[var(--accent-brand-hover)] text-white font-semibold cursor-pointer shadow-xs disabled:opacity-50"
                 >
-                  {mandatorySubmitting ? 'Updating Credentials...' : 'Save New Password & Unlock Portal'}
+                  {mandatorySubmitting ? 'Updating...' : 'Save New Password & Unlock'}
                 </button>
               </div>
             </form>

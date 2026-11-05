@@ -7,6 +7,7 @@ export interface IStudent extends Document {
   rollNo: string;
   department: string;
   batch: string;
+  graduationYear?: number;
   cgpa: number;
   activeBacklogs: number;
   clearedBacklogs: number;
@@ -32,6 +33,7 @@ const StudentSchema: Schema = new Schema(
     rollNo: { type: String, required: true, unique: true },
     department: { type: String, required: true },
     batch: { type: String, required: true },
+    graduationYear: { type: Number, default: 2025 },
     cgpa: { type: Number, required: true, min: 0, max: 10 },
     activeBacklogs: { type: Number, default: 0, min: 0 },
     clearedBacklogs: { type: Number, default: 0, min: 0 },

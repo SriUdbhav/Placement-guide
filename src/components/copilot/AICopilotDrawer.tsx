@@ -211,16 +211,16 @@ How can I assist your placement preparation today?`,
       <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
         <div className="flex items-center space-x-2">
           <Cpu className="w-3.5 h-3.5 text-violet-600" />
-          <span className="text-slate-600 font-medium">Model Engine:</span>
+          <span className="text-slate-600 font-medium">Placement Engine:</span>
           <span className="font-semibold text-slate-900">
-            {isRealAiActive ? 'Gemini 3.8 Flash (Server)' : 'Demo Intelligence'}
+            {isRealAiActive ? 'Placement Copilot (Live)' : 'Demo Intelligence'}
           </span>
         </div>
         <button
           onClick={toggleAiMode}
           className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
         >
-          {isRealAiActive ? 'Switch to Demo' : 'Use Gemini AI'}
+          {isRealAiActive ? 'Switch to Demo' : 'Enable Live AI'}
         </button>
       </div>
 
@@ -248,7 +248,7 @@ How can I assist your placement preparation today?`,
                     <span>{msg.timestamp}</span>
                     {msg.source && (
                       <span className="ml-1 text-[9px] px-1 py-0.2 rounded bg-violet-100 text-violet-700 font-mono">
-                        {msg.source === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash' : 'Demo Engine'}
+                        {msg.source === 'gemini-3.8-flash' ? 'AI Assistant' : 'Demo Engine'}
                       </span>
                     )}
                   </>

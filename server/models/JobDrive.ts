@@ -14,6 +14,7 @@ export interface IJobDrive extends Document {
   minCgpa: number;
   maxBacklogs: number;
   eligibleDepartments: string[];
+  graduationYear?: number;
   deadline: Date;
   assessmentDate: Date;
   matchScore: number;
@@ -53,6 +54,7 @@ const JobDriveSchema: Schema = new Schema(
     minCgpa: { type: Number, required: true, min: 0, max: 10 },
     maxBacklogs: { type: Number, default: 0 },
     eligibleDepartments: { type: [String], default: [] },
+    graduationYear: { type: Number, default: 2025 },
     deadline: { type: Date, required: true },
     assessmentDate: { type: Date, required: true },
     matchScore: { type: Number, default: 85 },

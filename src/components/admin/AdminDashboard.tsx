@@ -102,14 +102,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div>
             <div className="flex items-center space-x-2">
               <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                Placement Governance & Policy Management
+                VFSTR Placement Governance & Policy Management
               </h1>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white">
-                Admin Console
+                VFSTR Admin Console
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Configure university bylaws, offer lock conditions, model API parameters, and compliance audits for Hackathon PS 16.
+              Configure VFSTR university placement bylaws, offer lock conditions, automated eligibility rules, and compliance audits for Hackathon PS 16.
             </p>
           </div>
 
@@ -119,7 +119,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 flex items-center space-x-2 cursor-pointer"
             >
               <Cpu className="w-4 h-4 text-violet-600" />
-              <span>Engine: {isRealAiActive ? 'Gemini 3.8 Flash' : 'Demo Mode'}</span>
+              <span>Engine: {isRealAiActive ? 'AI Assistant' : 'Demo Mode'}</span>
             </button>
           </div>
         </div>
@@ -225,11 +225,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="space-y-3 text-xs">
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
               <div className="flex justify-between font-bold text-slate-800">
-                <span>Gemini 3.8 Flash SDK</span>
+                <span>AI Placement Assistant</span>
                 <span className="text-emerald-600">Operational</span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Connected via server-side `@google/genai` proxy. No browser key exposure.
+                Connected via secure server-side AI proxy. No browser key exposure.
               </p>
             </div>
 

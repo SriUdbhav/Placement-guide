@@ -130,16 +130,16 @@ export const PlacementOfficerDashboard: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2 mb-1">
               <span className="text-xs font-semibold text-[var(--accent-brand)] uppercase tracking-wider">
-                Official Campus Portal
+                VFSTR Career Development Centre (CDC)
               </span>
               <span className="text-xs text-[var(--text-muted)]">·</span>
               <span className="text-xs text-[var(--text-muted)]">Graduation Season 2025</span>
             </div>
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[var(--text-main)]">
-              Placement & Training Cell (TPO) Intelligence
+              VFSTR Training & Placement Cell (TPO) Intelligence
             </h1>
             <p className="text-xs text-[var(--text-secondary)] mt-1">
-              Institutional accreditation compliance, automated candidate verification, and personalized placement notifications.
+              Institutional accreditation compliance, automated candidate verification, and personalized placement notifications for Vignan's Foundation for Science, Technology & Research.
             </p>
           </div>
 

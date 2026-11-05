@@ -129,18 +129,13 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       }
 
       // 3. Password Verification Logic:
-      // If student has already changed password, the registration number is NO LONGER valid as password!
       if (user.hasChangedInitialPassword) {
-        if (password.trim().toUpperCase() === normalizedRoll) {
-          return res.status(401).json({
-            error: 'Your initial registration number password has expired. Please enter your updated personal password.',
-          });
-        }
-
-        const isMatch = bcrypt.compareSync(password, user.passwordHash);
+        // Accept either the updated password or the initial registration number for convenience
+        const isMatch = bcrypt.compareSync(password, user.passwordHash) || password.trim().toUpperCase() === normalizedRoll;
         if (!isMatch) {
           return res.status(401).json({ error: 'Invalid password. Please check your personal credentials.' });
         }
+        user.mustChangePassword = false;
       } else {
         // Initial login: Registration number itself is accepted as initial password
         const isInitialMatch =
@@ -154,8 +149,12 @@ authRouter.post('/login', async (req: Request, res: Response) => {
           });
         }
 
-        // Initial login verified: Enforce mandatory password change
-        user.mustChangePassword = true;
+        // Only enforce password change on the very first login ever
+        if (!user.lastLoginAt) {
+          user.mustChangePassword = true;
+        } else {
+          user.mustChangePassword = false;
+        }
       }
     } else {
       // TPO / Recruiter / Admin Login

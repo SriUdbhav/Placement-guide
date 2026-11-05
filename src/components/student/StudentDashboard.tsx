@@ -63,6 +63,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2 text-xs font-medium text-[var(--text-muted)] mb-1">
+              <span className="font-semibold text-slate-700">VFSTR Deemed to be University</span>
+              <span>·</span>
               <span>{student.department}</span>
               <span>·</span>
               <span>Batch {student.batch}</span>

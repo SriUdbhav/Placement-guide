@@ -3,6 +3,7 @@ export type UserRole = 'student' | 'tpo' | 'recruiter' | 'admin';
 export type NavigationTab =
   | 'student-dashboard'
   | 'resume-analyzer'
+  | 'cv-generator'
   | 'job-recommendations'
   | 'eligibility-checker'
   | 'skill-gap'
@@ -116,3 +117,97 @@ export interface CopilotMessage {
   source?: 'gemini-3.8-flash' | 'demo_intelligence';
   suggestedActions?: string[];
 }
+
+export interface CVEducation {
+  id: string;
+  institution: string;
+  degree: string;
+  field: string;
+  startYear: string;
+  endYear: string;
+  cgpaOrPercentage: string;
+  location?: string;
+}
+
+export interface CVProject {
+  id: string;
+  title: string;
+  techStack: string;
+  duration?: string;
+  link?: string;
+  bullets: string[];
+}
+
+export interface CVExperience {
+  id: string;
+  role: string;
+  company: string;
+  location?: string;
+  duration: string;
+  bullets: string[];
+}
+
+export interface CVCertification {
+  id: string;
+  name: string;
+  issuer: string;
+  issueDate: string;
+  credentialUrl?: string;
+}
+
+export interface CVChatMessage {
+  id: string;
+  sender: 'ai' | 'user';
+  text: string;
+  timestamp: string;
+  quickReplies?: string[];
+  stepId?: string;
+  isError?: boolean;
+}
+
+export interface CVConversationState {
+  currentStep: string;
+  stepIndex: number;
+  totalSteps: number;
+  status: 'in_progress' | 'completed';
+  messages: CVChatMessage[];
+  collectedAnswers: Record<string, any>;
+}
+
+export interface CVData {
+  id: string;
+  studentId: string;
+  title: string;
+  template: 'modern-ats' | 'executive-clean' | 'academic-harvard' | 'minimal-tech';
+  targetRole?: string;
+  targetCompany?: string;
+  jobDescription?: string;
+  conversationState?: CVConversationState;
+  personalDetails: {
+    fullName: string;
+    email: string;
+    phone: string;
+    rollNo: string;
+    department: string;
+    batch: string;
+    location: string;
+    linkedinUrl?: string;
+    githubUrl?: string;
+    portfolioUrl?: string;
+  };
+  summary: string;
+  education: CVEducation[];
+  skills: {
+    languages: string[];
+    frameworks: string[];
+    developerTools: string[];
+    databases: string[];
+    coursework: string[];
+  };
+  projects: CVProject[];
+  experience: CVExperience[];
+  certifications: CVCertification[];
+  achievements: string[];
+  lastModified?: string;
+}
+

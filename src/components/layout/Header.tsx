@@ -44,6 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Student Portal / Overview';
       case 'resume-analyzer':
         return 'Student Portal / Resume ATS Analyzer';
+      case 'cv-generator':
+        return 'Student Portal / Professional CV Generator';
       case 'job-recommendations':
         return 'Student Portal / Campus Placement Drives';
       case 'eligibility-checker':
@@ -96,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center space-x-2 text-xs font-semibold tracking-wide uppercase text-[var(--text-muted)]">
           <span className="flex items-center text-[var(--accent-brand)] font-bold">
             <GraduationCap className="w-4 h-4 mr-1 inline" />
-            PlaceMate AI
+            PlaceMate AI • VFSTR Placements
           </span>
           <span>/</span>
           <span className="text-[var(--text-main)] font-medium normal-case text-sm">

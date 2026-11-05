@@ -77,12 +77,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: data.error || 'Authentication failed' };
       }
 
-      setUser(data.user);
+      // Check if user has already been prompted once on this client
+      const promptKey = `placemate_pwd_prompted_${data.user?.rollNo || data.user?.userId || identifier.trim()}`;
+      const alreadyPrompted = localStorage.getItem(promptKey) === 'true';
+      const mustChangePassword = Boolean(data.mustChangePassword) && !alreadyPrompted;
+
+      const userToStore = {
+        ...data.user,
+        mustChangePassword,
+      };
+
+      setUser(userToStore);
       setToken(data.token);
       localStorage.setItem('placemate_auth_token', data.token);
-      localStorage.setItem('placemate_auth_user', JSON.stringify(data.user));
+      localStorage.setItem('placemate_auth_user', JSON.stringify(userToStore));
 
-      return { success: true, mustChangePassword: Boolean(data.mustChangePassword) };
+      return { success: true, mustChangePassword, user: userToStore };
     } catch (err: any) {
       return { success: false, error: err.message || 'Connection to authentication service failed' };
     }
@@ -105,13 +115,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: data.error || 'Password update failed' };
       }
 
+      const promptKey = user ? `placemate_pwd_prompted_${user.rollNo || user.userId}` : '';
+      if (promptKey) {
+        localStorage.setItem(promptKey, 'true');
+      }
+
       if (data.token) {
         setToken(data.token);
         localStorage.setItem('placemate_auth_token', data.token);
       }
       if (data.user) {
-        setUser(data.user);
-        localStorage.setItem('placemate_auth_user', JSON.stringify(data.user));
+        const userObj = { ...data.user, mustChangePassword: false };
+        setUser(userObj);
+        localStorage.setItem('placemate_auth_user', JSON.stringify(userObj));
       } else if (user) {
         const updatedUser = { ...user, mustChangePassword: false };
         setUser(updatedUser);

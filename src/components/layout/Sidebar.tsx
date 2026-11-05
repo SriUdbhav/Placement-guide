@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Mail,
   UserCheck,
+  ScrollText,
 } from 'lucide-react';
 import { NavigationTab, StudentProfile } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -43,6 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'application-tracker' as NavigationTab, label: 'Applications', icon: Kanban },
     { id: 'eligibility-checker' as NavigationTab, label: 'Eligibility Check', icon: CheckCircle2 },
     { id: 'resume-analyzer' as NavigationTab, label: 'Resume ATS', icon: FileText },
+    { id: 'cv-generator' as NavigationTab, label: 'CV Generator', icon: ScrollText },
     { id: 'skill-gap' as NavigationTab, label: 'Skill Gap Analysis', icon: TrendingUp },
     { id: 'mock-interview' as NavigationTab, label: 'Mock Interview', icon: MessageSquareCode },
   ];
@@ -88,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <div>
             <div className="font-bold text-sm leading-none text-[var(--text-main)]">PlaceMate AI</div>
-            <div className="text-[11px] text-[var(--text-muted)] mt-1 font-medium">Placement Platform</div>
+            <div className="text-[10px] text-[var(--accent-brand)] mt-1 font-semibold">VFSTR • CDC Placements</div>
           </div>
         </div>
 
@@ -146,12 +148,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           onClick={toggleAiMode}
           className="w-full flex items-center justify-between p-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-subtle)] text-xs text-left cursor-pointer hover:border-slate-300 transition-colors"
-          title="Toggle between Live Gemini 3.8 Flash model and Local Demo Engine"
+          title="Toggle between Live Placement Copilot and Local Demo Engine"
         >
           <div>
             <div className="font-semibold text-[var(--text-main)] text-[11px]">AI Placement Engine</div>
             <div className="text-[10px] text-[var(--text-muted)]">
-              {isRealAiActive ? 'Gemini 3.8 Flash' : 'Demo Intelligence'}
+              {isRealAiActive ? 'Placement Copilot' : 'Demo Intelligence'}
             </div>
           </div>
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${isRealAiActive ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>

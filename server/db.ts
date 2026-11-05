@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+
+mongoose.set('bufferCommands', false); // Fail fast when offline, avoid buffering hangs
 import { Student } from './models/Student';
 import { Company } from './models/Company';
 import { JobDrive } from './models/JobDrive';
@@ -7,6 +9,7 @@ import { Notification } from './models/Notification';
 import { User } from './models/User';
 import { Resume } from './models/Resume';
 import { Interview } from './models/Interview';
+import { CV } from './models/CV';
 import bcrypt from 'bcryptjs';
 
 export interface DatabaseStatus {
@@ -24,6 +27,7 @@ export interface DatabaseStatus {
     jobs: number;
     applications: number;
     resumes: number;
+    cvs: number;
     interviews: number;
     notifications: number;
     users: number;
@@ -150,6 +154,7 @@ export async function getDatabaseStatus(): Promise<DatabaseStatus> {
         jobs,
         applications,
         resumes,
+        cvs,
         interviews,
         notifications,
         users,
@@ -159,6 +164,7 @@ export async function getDatabaseStatus(): Promise<DatabaseStatus> {
         JobDrive.countDocuments(),
         Application.countDocuments(),
         Resume.countDocuments(),
+        CV.countDocuments(),
         Interview.countDocuments(),
         Notification.countDocuments(),
         User.countDocuments(),
@@ -177,6 +183,7 @@ export async function getDatabaseStatus(): Promise<DatabaseStatus> {
           jobs,
           applications,
           resumes,
+          cvs,
           interviews,
           notifications,
           users,
@@ -211,6 +218,7 @@ export async function getDatabaseStatus(): Promise<DatabaseStatus> {
       jobs: inMemoryStore.jobs.length,
       applications: inMemoryStore.applications.length,
       resumes: inMemoryStore.resumes.length,
+      cvs: inMemoryStore.cvs?.length || 0,
       interviews: inMemoryStore.interviews.length,
       notifications: inMemoryStore.notifications.length,
       users: inMemoryStore.users.length,
@@ -586,6 +594,196 @@ export const inMemoryStore = {
       updatedAt: new Date(),
     },
   ],
+  cvs: [
+    {
+      cvId: 'cv-sriudbhav-01',
+      studentId: '251FA04I28',
+      title: 'Sri Udbhav — Core Systems & SDE CV',
+      template: 'modern-ats',
+      personalDetails: {
+        fullName: 'Sri Udbhav',
+        email: 'v.sriudbhav68@gmail.com',
+        phone: '+91 94901 23456',
+        rollNo: '251FA04I28',
+        department: 'Computer Science & Engineering',
+        batch: '2021 - 2025 (Final Year)',
+        location: 'Vadlamudi, Guntur, AP',
+        linkedinUrl: 'https://linkedin.com/in/sri-udbhav',
+        githubUrl: 'https://github.com/SriUdbhav',
+        portfolioUrl: 'https://sriudbhav.dev',
+      },
+      summary:
+        'Final-year Computer Science & Engineering undergraduate at VFSTR with high academic standing (CGPA: 9.24) and demonstrated proficiency in distributed systems, full-stack web engineering, and algorithms. Experienced in architecting low-latency microservices with Node.js, TypeScript, Docker, and PostgreSQL.',
+      education: [
+        {
+          id: 'edu-1',
+          institution: "Vignan's Foundation for Science, Technology & Research (VFSTR Deemed to be University)",
+          degree: 'Bachelor of Technology (B.Tech)',
+          field: 'Computer Science & Engineering',
+          startYear: '2021',
+          endYear: '2025',
+          cgpaOrPercentage: '9.24 / 10.0 CGPA',
+          location: 'Vadlamudi, Guntur',
+        },
+        {
+          id: 'edu-2',
+          institution: 'Sri Chaitanya Junior College',
+          degree: 'Intermediate (Class XII - MPC)',
+          field: 'Mathematics, Physics, Chemistry',
+          startYear: '2019',
+          endYear: '2021',
+          cgpaOrPercentage: '94.2%',
+          location: 'Vijayawada, AP',
+        },
+        {
+          id: 'edu-3',
+          institution: 'Bhashyam Public School',
+          degree: 'Secondary School Certificate (Class X)',
+          field: 'General Sciences & Mathematics',
+          startYear: '2018',
+          endYear: '2019',
+          cgpaOrPercentage: '95.0%',
+          location: 'Guntur, AP',
+        },
+      ],
+      skills: {
+        languages: ['TypeScript', 'JavaScript (ESNext)', 'Python', 'C++', 'SQL'],
+        frameworks: ['React 19', 'Node.js', 'Express', 'Tailwind CSS', 'FastAPI'],
+        developerTools: ['Docker', 'Git', 'Linux / Bash', 'Postman', 'VS Code', 'GitHub Actions CI/CD'],
+        databases: ['PostgreSQL', 'MongoDB', 'Redis (In-Memory Caching)'],
+        coursework: ['Data Structures & Algorithms', 'Operating Systems', 'Database Management Systems', 'Computer Networks', 'Distributed Systems'],
+      },
+      projects: [
+        {
+          id: 'proj-1',
+          title: 'PlaceMate AI — Campus Recruitment & Placement Agent',
+          techStack: 'React 19, TypeScript, Express, Tailwind CSS, MongoDB Atlas',
+          duration: 'Oct 2024 - Present',
+          link: 'https://github.com/SriUdbhav/Placement-guide',
+          bullets: [
+            'Architected an autonomous campus recruitment management platform serving students, recruiters, and TPO cells for university hiring drives.',
+            'Engineered automated candidate eligibility audits and verification pipeline matching students against GPA and backlog policies.',
+            'Integrated ATS resume vector scoring and Gemini AI copilot for contextual mock interview grading and skill gap diagnostics.',
+          ],
+        },
+        {
+          id: 'proj-2',
+          title: 'Distributed Task Queue & In-Memory Cache Engine',
+          techStack: 'Node.js, TypeScript, Redis, Docker, Jest',
+          duration: 'Jan 2024 - May 2024',
+          link: 'https://github.com/SriUdbhav/distributed-task-queue',
+          bullets: [
+            'Engineered an asynchronous task execution queue processing 5,000+ jobs/min with exponential backoff retry and dead-letter channels.',
+            'Implemented an LRU cache layer with TTL expiry, reducing downstream database read overhead by 42%.',
+            'Containerized services using multi-stage Docker builds, maintaining comprehensive unit test coverage above 90%.',
+          ],
+        },
+      ],
+      experience: [
+        {
+          id: 'exp-1',
+          role: 'Software Development Engineering Intern',
+          company: 'Campus Career Development Centre (CDC)',
+          location: 'VFSTR Campus',
+          duration: 'May 2024 - Jul 2024',
+          bullets: [
+            'Developed automated data extraction and student batch verification microservices handling 800+ candidate academic dossiers.',
+            'Optimized relational query indices in PostgreSQL, decreasing student placement audit generation latency from 4.2s to 650ms.',
+            'Collaborated with placement coordinators to implement secure registration-number authentication and role-based access control.',
+          ],
+        },
+      ],
+      certifications: [
+        {
+          id: 'cert-1',
+          name: 'AWS Certified Cloud Practitioner',
+          issuer: 'Amazon Web Services (AWS)',
+          issueDate: 'Aug 2024',
+          credentialUrl: 'https://aws.amazon.com/verification',
+        },
+        {
+          id: 'cert-2',
+          name: 'Meta Front-End Developer Professional Certificate',
+          issuer: 'Meta / Coursera',
+          issueDate: 'Jan 2024',
+          credentialUrl: 'https://coursera.org/verify/professional-cert',
+        },
+      ],
+      achievements: [
+        'Solved 450+ algorithmic problems across LeetCode and CodeChef with Top 5% contest rating.',
+        'Finalist at VFSTR Hackathon 2.0 Problem Statement 16 for Autonomous Placement Management Agent.',
+        'Academic Merit Scholar at VFSTR for maintaining consistent CGPA above 9.20 across all semesters.',
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      cvId: 'cv-aarav-01',
+      studentId: 'stu-2025-089',
+      title: 'Aarav Sharma — Full Stack Developer CV',
+      template: 'modern-ats',
+      personalDetails: {
+        fullName: 'Aarav Sharma',
+        email: 'aarav.sharma@campus.edu',
+        phone: '+91 98765 43210',
+        rollNo: '21CS048',
+        department: 'Computer Science & Engineering',
+        batch: '2021 - 2025 (Final Year)',
+        location: 'Vadlamudi, Guntur, AP',
+        linkedinUrl: 'https://linkedin.com/in/aarav-sharma',
+        githubUrl: 'https://github.com/aaravsharma',
+        portfolioUrl: 'https://aaravsharma.dev',
+      },
+      summary:
+        'Enthusiastic Full Stack Engineer with strong algorithmic fundamentals (450+ LeetCode problems solved) and 8.92 CGPA at VFSTR. Proficient in React, Node.js, TypeScript, PostgreSQL, and building reliable web microservices.',
+      education: [
+        {
+          id: 'edu-1',
+          institution: "Vignan's Foundation for Science, Technology & Research (VFSTR)",
+          degree: 'Bachelor of Technology (B.Tech)',
+          field: 'Computer Science & Engineering',
+          startYear: '2021',
+          endYear: '2025',
+          cgpaOrPercentage: '8.92 / 10.0 CGPA',
+          location: 'Vadlamudi, Guntur',
+        },
+      ],
+      skills: {
+        languages: ['TypeScript', 'JavaScript', 'Python', 'C++'],
+        frameworks: ['React', 'Node.js', 'Express', 'Tailwind CSS'],
+        developerTools: ['Docker', 'Git', 'Linux', 'Postman'],
+        databases: ['PostgreSQL', 'MongoDB', 'Redis'],
+        coursework: ['Data Structures & Algorithms', 'DBMS', 'Operating Systems'],
+      },
+      projects: [
+        {
+          id: 'proj-1',
+          title: 'Campus Event & Hackathon Manager',
+          techStack: 'React, Node.js, Express, PostgreSQL',
+          duration: 'Jan 2024 - Apr 2024',
+          bullets: [
+            'Built responsive registration and team coordination portal used by 1,200+ university participants.',
+            'Implemented JWT authentication with role-based routing and automated PDF certificate generation.',
+          ],
+        },
+      ],
+      experience: [],
+      certifications: [
+        {
+          id: 'cert-1',
+          name: 'PostgreSQL Database Specialist',
+          issuer: 'Udemy / Linux Foundation',
+          issueDate: 'Mar 2024',
+        },
+      ],
+      achievements: [
+        'LeetCode 450+ problems solved with Knight rating.',
+        'Dean’s Honor Roll student for semester academic excellence.',
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ],
   interviews: [
     {
       interviewId: 'int-001',
@@ -650,8 +848,9 @@ export const inMemoryStore = {
       department: 'Computer Science & Engineering',
       rollNo: '251FA04I28',
       passwordHash: bcrypt.hashSync('251FA04I28', 10), // Initial password is the registration number
-      mustChangePassword: true, // Required to change password upon first login
-      hasChangedInitialPassword: false,
+      mustChangePassword: false, // Prompted only once on first activation, not on every login
+      hasChangedInitialPassword: true,
+      lastLoginAt: new Date(),
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -743,6 +942,12 @@ async function seedDatabaseIfEmpty() {
     if (interviewCount === 0 && inMemoryStore.interviews.length > 0) {
       console.log('Seeding initial mock interview into MongoDB...');
       await Interview.insertMany(inMemoryStore.interviews);
+    }
+
+    const cvCount = await CV.countDocuments();
+    if (cvCount === 0 && inMemoryStore.cvs.length > 0) {
+      console.log('Seeding initial CV documents into MongoDB...');
+      await CV.insertMany(inMemoryStore.cvs);
     }
 
     const notifCount = await Notification.countDocuments();

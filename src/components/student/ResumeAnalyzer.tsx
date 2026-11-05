@@ -131,7 +131,7 @@ ACHIEVEMENTS
               AI Resume ATS Analyzer & Optimizer
             </h1>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-violet-100 text-violet-700">
-              {isRealAiActive ? 'Gemini 3.8 Flash' : 'Demo Intelligence'}
+              {isRealAiActive ? 'AI Resume Analysis' : 'Demo Intelligence'}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
